@@ -163,6 +163,32 @@ export const db = {
     return data || [];
   },
 
+  async updateCall(callId: string, updates: Partial<Call>): Promise<Call | null> {
+    const { data, error } = await supabaseAdmin
+      .from('calls')
+      .update(updates)
+      .eq('id', callId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('[DB] Error updating call:', error);
+      return null;
+    }
+    return data;
+  },
+
+  // Settings
+  async getUserSettings(userId: string): Promise<any | null> {
+    const { data } = await supabaseAdmin
+      .from('user_settings')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    return data;
+  },
+
   // Documents (for RAG)
   async saveDocument(doc: Partial<Document>): Promise<void> {
     await supabaseAdmin.from('documents').insert(doc);

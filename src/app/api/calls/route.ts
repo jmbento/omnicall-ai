@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { callId, status, durationSeconds, creditsUsed } = body;
+    const { callId, userId, status, durationSeconds, creditsUsed } = body;
     
     if (!callId) {
       return NextResponse.json({ error: 'callId is required' }, { status: 400 });
@@ -106,10 +106,28 @@ export async function PATCH(request: NextRequest) {
     if (creditsUsed) updates.credits_used = creditsUsed;
     if (status === 'completed') updates.ended_at = new Date().toISOString();
     
-    // This would need supabaseAdmin.from('calls').update()...
-    // For now, return success
+    const updatedCall = await db.updateCall(callId, updates);
     
-    return NextResponse.json({ success: true, updates });
+    // Se a chamada terminou, enviar relatório por email se configurado
+    if (status === 'completed' && userId) {
+      const { sendEmail } = await import('@/lib/email');
+      const settings = await db.getUserSettings(userId);
+      
+      if (settings?.email_notifications) {
+        await sendEmail(userId, {
+          subject: `Chamada Finalizada - ${updatedCall?.cartridge_id}`,
+          html: `
+            <h3>Resumo da Chamada</h3>
+            <p>ID: ${callId}</p>
+            <p>Status: ${status}</p>
+            <p>Duração: ${durationSeconds} segundos</p>
+            <p>Créditos Usados: ${creditsUsed}</p>
+          `
+        });
+      }
+    }
+    
+    return NextResponse.json({ success: true, call: updatedCall });
   } catch (error) {
     console.error('[Calls] Error updating call:', error);
     return NextResponse.json({ error: 'Failed to update call' }, { status: 500 });

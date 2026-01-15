@@ -97,6 +97,27 @@ export async function POST(request: NextRequest) {
       // Deduct credits
       await db.deductCredits(userId, 1);
       
+      // Notify Admin via Email if configured
+      try {
+        const adminSettings = await db.getUserSettings('test-user-001'); // Em prod, buscar o admin deste número
+        if (adminSettings?.notify_on_new_call && adminSettings?.email) {
+          const { sendEmail } = await import('@/lib/email');
+          await sendEmail('test-user-001', {
+            subject: `Novo Atendimento WhatsApp: ${phoneNumber}`,
+            html: `
+              <h3>Novo atendimento iniciado via WhatsApp</h3>
+              <p><strong>Cliente:</strong> ${phoneNumber}</p>
+              <p><strong>Mensagem:</strong> ${messageText}</p>
+              <p><strong>IA Respondeu:</strong> ${aiResponse}</p>
+              <hr />
+              <p><a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard">Acessar Console</a></p>
+            `
+          });
+        }
+      } catch (err) {
+        console.error('[WhatsApp] Notification error:', err);
+      }
+      
       console.log(`[WhatsApp] Response sent to ${phoneNumber}`);
     }
     

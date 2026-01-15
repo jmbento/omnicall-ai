@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -88,7 +88,15 @@ const CARTRIDGES: Cartridge[] = [
 ];
 
 // Sidebar Component
-function Sidebar({ activeView, onNavigate }: { activeView: View; onNavigate: (v: View) => void }) {
+function Sidebar({ 
+  activeView, 
+  onNavigate, 
+  credits 
+}: { 
+  activeView: View; 
+  onNavigate: (v: View) => void;
+  credits: number;
+}) {
   const navItems = [
     { id: 'discover' as View, icon: <Compass className="w-5 h-5" />, label: 'Explorar' },
     { id: 'dashboard' as View, icon: <LayoutDashboard className="w-5 h-5" />, label: 'Dashboard' },
@@ -100,7 +108,7 @@ function Sidebar({ activeView, onNavigate }: { activeView: View; onNavigate: (v:
     <aside className="w-64 bg-[#0f0f14] border-r border-white/10 flex flex-col h-screen">
       <div className="p-6">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white">
             <Bot className="w-6 h-6" />
           </div>
           <span className="text-lg font-bold">OmniCall AI</span>
@@ -136,12 +144,12 @@ function Sidebar({ activeView, onNavigate }: { activeView: View; onNavigate: (v:
       
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-sm font-bold">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-sm font-bold text-white uppercase">
             U
           </div>
           <div className="flex-1">
             <div className="text-sm font-medium">Usuário</div>
-            <div className="text-xs text-slate-400">500 créditos</div>
+            <div className="text-xs text-slate-400">{credits} créditos</div>
           </div>
         </div>
       </div>
@@ -150,19 +158,19 @@ function Sidebar({ activeView, onNavigate }: { activeView: View; onNavigate: (v:
 }
 
 // Dashboard View
-function DashboardView() {
+function DashboardView({ credits, callsCount }: { credits: number; callsCount: number }) {
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-8 text-white">Dashboard</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
-          { label: 'Créditos', value: '500', icon: <CreditCard className="w-5 h-5" />, color: '#f59e0b' },
-          { label: 'Chamadas Hoje', value: '0', icon: <Phone className="w-5 h-5" />, color: '#10b981' },
+          { label: 'Créditos', value: credits.toString(), icon: <CreditCard className="w-5 h-5" />, color: '#f59e0b' },
+          { label: 'Chamadas Hoje', value: callsCount.toString(), icon: <Phone className="w-5 h-5" />, color: '#10b981' },
           { label: 'Tempo Médio', value: '--', icon: <Clock className="w-5 h-5" />, color: '#6366f1' },
           { label: 'Cartuchos', value: '4', icon: <Bot className="w-5 h-5" />, color: '#8b5cf6' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-[#1a1a24] border border-white/10 rounded-2xl p-6">
+          <div key={stat.label} className="bg-[#1a1a24] border border-white/10 rounded-2xl p-6 shadow-sm hover:border-white/20 transition-all">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
               style={{ backgroundColor: `${stat.color}20`, color: stat.color }}
@@ -498,34 +506,68 @@ function DiscoverView({ onNavigate }: { onNavigate: (v: View) => void }) {
 // Main Dashboard Page
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<View>('discover');
+  const [credits, setCredits] = useState<number>(0);
+  const [callsCount, setCallsCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const userId = 'test-user-001'; // Em produção, viria do Auth
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [creditsRes, callsRes] = await Promise.all([
+          fetch(`/api/credits?userId=${userId}`),
+          fetch(`/api/calls?userId=${userId}`)
+        ]);
+        
+        const creditsData = await creditsRes.json();
+        const callsData = await callsRes.json();
+        
+        setCredits(creditsData.balance || 0);
+        setCallsCount(callsData.todayCount || 0);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchData();
+  }, [userId]);
   
   return (
-    <div className="flex h-screen bg-[#0a0a0f] text-white">
-      <Sidebar activeView={activeView} onNavigate={setActiveView} />
+    <div className="flex h-screen bg-[#0a0a0f] text-white overflow-hidden">
+      <Sidebar activeView={activeView} onNavigate={setActiveView} credits={credits} />
       
-      <main className="flex-1 overflow-auto">
-        <AnimatePresence mode="wait">
-          {activeView === 'discover' && (
-            <motion.div key="discover" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <DiscoverView onNavigate={setActiveView} />
-            </motion.div>
-          )}
-          {activeView === 'dashboard' && (
-            <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <DashboardView />
-            </motion.div>
-          )}
-          {activeView === 'store' && (
-            <motion.div key="store" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <StoreView />
-            </motion.div>
-          )}
-          {activeView === 'console' && (
-            <motion.div key="console" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-full">
-              <ConsoleView />
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <main className="flex-1 overflow-auto bg-[#0a0a0f]">
+        {isLoading ? (
+          <div className="h-full flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
+            <p className="text-slate-400 font-medium">Carregando seu universo neural...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
+            {activeView === 'discover' && (
+              <motion.div key="discover" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <DiscoverView onNavigate={setActiveView} />
+              </motion.div>
+            )}
+            {activeView === 'dashboard' && (
+              <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <DashboardView credits={credits} callsCount={callsCount} />
+              </motion.div>
+            )}
+            {activeView === 'store' && (
+              <motion.div key="store" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <StoreView />
+              </motion.div>
+            )}
+            {activeView === 'console' && (
+              <motion.div key="console" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="h-full">
+                <ConsoleView />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </main>
     </div>
   );
