@@ -17,7 +17,7 @@ import {
   Plus,
   X,
   Wand2,
-  Settings2,
+  Settings,
   ShoppingCart,
   Hotel,
   Landmark,
@@ -123,6 +123,15 @@ function Sidebar({ activeView, onNavigate }: { activeView: View; onNavigate: (v:
             <span className="font-medium">{item.label}</span>
           </button>
         ))}
+        
+        {/* Settings Link */}
+        <Link
+          href="/settings"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl mb-1 transition-all hover:bg-white/5 text-slate-400 hover:text-white"
+        >
+          <Settings className="w-5 h-5" />
+          <span className="font-medium">Configurações</span>
+        </Link>
       </nav>
       
       <div className="p-4 border-t border-white/10">

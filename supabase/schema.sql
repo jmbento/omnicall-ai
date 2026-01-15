@@ -112,6 +112,42 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE INDEX idx_documents_cartridge_id ON documents (cartridge_id);
 
 -- ============================================
+-- USER SETTINGS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT UNIQUE NOT NULL,
+
+-- Email Settings
+email TEXT,
+email_notifications BOOLEAN DEFAULT true,
+email_daily_report BOOLEAN DEFAULT false,
+smtp_host TEXT,
+smtp_port TEXT DEFAULT '587',
+smtp_user TEXT,
+smtp_password TEXT, -- Should be encrypted in production
+email_from TEXT,
+
+-- WhatsApp Settings
+phone_number TEXT,
+whatsapp_enabled BOOLEAN DEFAULT false,
+whatsapp_business_id TEXT,
+whatsapp_access_token TEXT, -- Should be encrypted in production
+whatsapp_verify_token TEXT DEFAULT 'omnicall-verify',
+
+-- Notification Settings
+
+notify_on_new_call BOOLEAN DEFAULT true,
+  notify_on_low_credits BOOLEAN DEFAULT true,
+  low_credits_threshold INTEGER DEFAULT 50,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_user_settings_user_id ON user_settings (user_id);
+
+-- ============================================
 -- MATCH DOCUMENTS FUNCTION (for RAG search)
 -- ============================================
 CREATE OR REPLACE FUNCTION match_documents(
@@ -172,6 +208,10 @@ CREATE POLICY "Service role full access calls" ON calls FOR ALL USING (true);
 CREATE POLICY "Service role full access custom_cartridges" ON custom_cartridges FOR ALL USING (true);
 
 CREATE POLICY "Service role full access documents" ON documents FOR ALL USING (true);
+
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role full access user_settings" ON user_settings FOR ALL USING (true);
 
 -- ============================================
 -- SEED DATA: Initial test user with credits
