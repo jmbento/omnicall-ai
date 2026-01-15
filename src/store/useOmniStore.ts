@@ -1,95 +1,87 @@
+/**
+ * Zustand Store for OmniCall AI
+ */
 
 import { create } from 'zustand';
-import { Cartridge, OmniSession, Message } from '@/types';
-import { 
-  Hotel, 
-  ShoppingCart, 
-  Banknote,
-  ConciergeBell,
-  ShieldCheck,
-  ShoppingBag
-} from 'lucide-react';
 
-interface OmniStore {
-  cartridges: Cartridge[];
-  sessions: OmniSession[];
-  activeSessionId: string | null;
-  selectedCartridgeId: string | null;
-  toggleCartridge: (id: string) => void;
-  setSelectedCartridge: (id: string | null) => void;
-  setActiveSession: (id: string | null) => void;
-  addMessage: (sessionId: string, message: Message) => void;
+interface Message {
+  id: string;
+  role: 'user' | 'model' | 'system';
+  content: string;
+  timestamp: Date;
 }
 
-export const useOmniStore = create<OmniStore>((set) => ({
-  cartridges: [
-    {
-      id: 'h-concierge-1',
-      name: 'Hotel Concierge Pro',
-      icon: ConciergeBell,
-      category: 'Hospitality',
-      description: 'Gestão de reservas e serviços de quarto com RAG integrado para guias locais.',
-      capabilities: ['Check-in', 'Room Service', 'Local Tours'],
-      basePrice: 299,
-      active: true,
-      systemInstruction: "Você é um Concierge de hotel 5 estrelas. Seja extremamente cortês, eficiente e ofereça serviços proativamente (como reserva de tours ou serviço de quarto)."
+interface OmniState {
+  // Credits
+  credits: number;
+  setCredits: (credits: number) => void;
+  deductCredits: (amount: number) => void;
+  
+  // Active Cartridge
+  activeCartridgeId: string | null;
+  setActiveCartridge: (id: string | null) => void;
+  
+  // Messages per cartridge
+  messages: Record<string, Message[]>;
+  addMessage: (cartridgeId: string, message: Message) => void;
+  clearMessages: (cartridgeId: string) => void;
+  
+  // Installed Cartridges
+  installedCartridges: string[];
+  installCartridge: (id: string) => void;
+  
+  // Session
+  isSessionActive: boolean;
+  setSessionActive: (active: boolean) => void;
+}
+
+export const useOmniStore = create<OmniState>((set) => ({
+  // Credits
+  credits: 500,
+  setCredits: (credits) => set({ credits }),
+  deductCredits: (amount) => set((state) => ({ credits: Math.max(0, state.credits - amount) })),
+  
+  // Active Cartridge
+  activeCartridgeId: null,
+  setActiveCartridge: (id) => set({ activeCartridgeId: id }),
+  
+  // Messages
+  messages: {},
+  addMessage: (cartridgeId, message) => set((state) => ({
+    messages: {
+      ...state.messages,
+      [cartridgeId]: [...(state.messages[cartridgeId] || []), message],
     },
-    {
-      id: 'f-bank-1',
-      name: 'BankAssist Vector',
-      icon: ShieldCheck,
-      category: 'Finance',
-      description: 'Análise de fraude e transações bancárias seguras com pgvector.',
-      capabilities: ['KYC Flow', 'Fraud Alert', 'Statement Analysis'],
-      basePrice: 899,
-      active: true,
-      systemInstruction: "Você é um consultor bancário seguro e sério. Ajude com transações e consultas de extrato, sempre prezando por protocolos de segurança."
-    },
-    {
-      id: 'r-checkout-1',
-      name: 'Retail Flow AI',
-      icon: ShoppingBag,
-      category: 'Retail',
-      description: 'Assistente de vendas e controle de estoque omnicanal.',
-      capabilities: ['Stock Check', 'Price Query', 'Cart Recovery'],
-      basePrice: 199,
-      active: false,
-      systemInstruction: "Você é um assistente de vendas ágil. Ajude os clientes a encontrar produtos no estoque e finalizar compras rapidamente."
-    }
-  ],
-  sessions: [
-    {
-      id: 'sess-001',
-      customerName: 'Gabriel Oliveira',
-      channel: 'whatsapp',
-      language: 'pt-BR',
-      status: 'active',
-      sentiment: 'positive',
-      transcript: [
-        { id: 'm1', role: 'user', content: 'Quero reservar um quarto para amanhã.', timestamp: new Date() },
-        { id: 'm2', role: 'model', content: 'Claro! Temos suítes disponíveis. Deseja vista para o mar?', timestamp: new Date() }
-      ],
-      activeCartridgeId: 'h-concierge-1'
-    },
-    {
-      id: 'sess-002',
-      customerName: 'Sarah Jenkins',
-      channel: 'voice_kiosk',
-      language: 'en-US',
-      status: 'active',
-      sentiment: 'neutral',
-      transcript: [],
-      activeCartridgeId: 'f-bank-1'
-    }
-  ],
-  activeSessionId: null,
-  selectedCartridgeId: 'h-concierge-1',
-  toggleCartridge: (id) => set((state) => ({
-    cartridges: state.cartridges.map(c => c.id === id ? { ...c, active: !c.active } : c)
   })),
-  setSelectedCartridge: (id) => set({ selectedCartridgeId: id }),
-  setActiveSession: (id) => set({ activeSessionId: id }),
-  addMessage: (sessionId, msg) => set((state) => ({
-    sessions: state.sessions.map(s => s.id === sessionId ? { ...s, transcript: [...s.transcript, msg] } : s)
-  }))
+  clearMessages: (cartridgeId) => set((state) => ({
+    messages: {
+      ...state.messages,
+      [cartridgeId]: [],
+    },
+  })),
+  
+  // Installed Cartridges
+  installedCartridges: [],
+  installCartridge: (id) => set((state) => ({
+    installedCartridges: [...state.installedCartridges, id],
+  })),
+  
+  // Session
+  isSessionActive: false,
+  setSessionActive: (active) => set({ isSessionActive: active }),
+}));
+
+// Widget Store
+interface WidgetState {
+  activeWidget: string | null;
+  widgetData: Record<string, any>;
+  setWidget: (type: string, data: any) => void;
+  clearWidget: () => void;
+}
+
+export const useWidgetStore = create<WidgetState>((set) => ({
+  activeWidget: null,
+  widgetData: {},
+  setWidget: (type, data) => set({ activeWidget: type, widgetData: { ...data } }),
+  clearWidget: () => set({ activeWidget: null, widgetData: {} }),
 }));

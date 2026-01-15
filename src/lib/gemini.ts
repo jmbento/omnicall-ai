@@ -1,35 +1,48 @@
 import 'server-only';
 import { GoogleGenAI } from '@google/genai';
 
-// Server-only Gemini client
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+// Lazy initialization to avoid build-time errors
+let genAI: GoogleGenAI | null = null;
+
+function getGenAI(): GoogleGenAI {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
+    genAI = new GoogleGenAI({ apiKey });
+  }
+  return genAI;
+}
 
 export const gemini = {
   /**
    * Generate text completion
    */
   async generateText(prompt: string, systemInstruction?: string) {
-    const model = genAI.models.get('gemini-2.0-flash');
-    
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      systemInstruction: systemInstruction,
+    const ai = getGenAI();
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: systemInstruction,
+      },
     });
     
-    return result.response?.text() || '';
+    return result.text || '';
   },
 
   /**
    * Generate embeddings for RAG
    */
   async generateEmbedding(text: string): Promise<number[]> {
-    const model = genAI.models.get('text-embedding-004');
-    
-    const result = await model.embedContent({
-      content: { parts: [{ text }] },
+    const ai = getGenAI();
+    const result = await ai.models.embedContent({
+      model: 'text-embedding-004',
+      contents: text,
     });
     
-    return result.embedding?.values || [];
+    return result.embeddings?.[0]?.values || [];
   },
 
   /**
@@ -39,19 +52,21 @@ export const gemini = {
     messages: { role: 'user' | 'model'; content: string }[],
     systemInstruction: string
   ) {
-    const model = genAI.models.get('gemini-2.0-flash');
-    
+    const ai = getGenAI();
     const contents = messages.map((m) => ({
       role: m.role,
       parts: [{ text: m.content }],
     }));
     
-    const result = await model.generateContent({
+    const result = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
       contents,
-      systemInstruction,
+      config: {
+        systemInstruction,
+      },
     });
     
-    return result.response?.text() || '';
+    return result.text || '';
   },
 
   /**

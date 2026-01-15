@@ -58,7 +58,7 @@ export const useGeminiLive = ({ cartridge, userId = 'user-001' }: UseGeminiLiveP
     modelTextBufferRef.current = "";
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY! });
       
       // Initialize Audio Contexts
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
