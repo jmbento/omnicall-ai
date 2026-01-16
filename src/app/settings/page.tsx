@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -49,6 +49,8 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   
+  const userId = 'test-user-001'; // Em produção, viria do Auth
+  
   const [settings, setSettings] = useState<UserSettings>({
     email: '',
     emailNotifications: true,
@@ -68,18 +70,56 @@ export default function SettingsPage() {
     lowCreditsThreshold: 50,
   });
 
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const res = await fetch(`/api/settings?userId=${userId}`);
+        const data = await res.json();
+        if (data && !data.error) {
+          setSettings({
+            email: data.email || '',
+            emailNotifications: data.email_notifications ?? true,
+            emailDailyReport: data.email_daily_report ?? false,
+            smtpHost: data.smtp_host || '',
+            smtpPort: data.smtp_port || '587',
+            smtpUser: data.smtp_user || '',
+            smtpPassword: data.smtp_password || '',
+            emailFrom: data.email_from || '',
+            phoneNumber: data.phone_number || '',
+            whatsappEnabled: data.whatsapp_enabled ?? false,
+            whatsappBusinessId: data.whatsapp_business_id || '',
+            whatsappAccessToken: data.whatsapp_access_token || '',
+            whatsappVerifyToken: data.whatsapp_verify_token || 'omnicall-verify',
+            notifyOnNewCall: data.notify_on_new_call ?? true,
+            notifyOnLowCredits: data.notify_on_low_credits ?? true,
+            lowCreditsThreshold: data.low_credits_threshold ?? 50,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+    loadSettings();
+  }, [userId]);
+
   const handleSave = async () => {
     setIsSaving(true);
-    
-    // Simular API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // TODO: Salvar no Supabase via API
-    // await fetch('/api/settings', { method: 'POST', body: JSON.stringify(settings) });
-    
-    setIsSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, ...settings }),
+      });
+      
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateSettings = (key: keyof UserSettings, value: any) => {
